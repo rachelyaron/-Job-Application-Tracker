@@ -301,7 +301,7 @@ export default function JobForm({ job, onSave, onCancel }: JobFormProps) {
                       <path d="M4 2h6l4 4v8H4V2z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
                       <path d="M10 2v4h4" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
                     </svg>
-                    צפה בקו"ח הנוכחי
+                    צפה בקו&quot;ח הנוכחי
                   </a>
                 )}
                 {cvFile && (

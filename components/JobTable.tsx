@@ -36,7 +36,7 @@ export default function JobTable({ jobs, onEdit, onDelete, onTimelineChange }: J
             <th className="px-4 py-3 text-right font-semibold">תחום</th>
             <th className="px-4 py-3 text-right font-semibold">תאריך הגשה</th>
             <th className="px-4 py-3 text-right font-semibold">התקדמות</th>
-            <th className="px-4 py-3 text-right font-semibold">קו"ח</th>
+            <th className="px-4 py-3 text-right font-semibold">קו&quot;ח</th>
             <th className="px-4 py-3 text-right font-semibold">הערות</th>
             <th className="px-4 py-3 text-right font-semibold">פעולות</th>
           </tr>
