@@ -15,3 +15,31 @@ ALTER TABLE jobs ADD COLUMN IF NOT EXISTS field TEXT;
 
 -- Add CV file URL column
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS cv_url TEXT;
+
+-- ── Auth: add user_id and enable per-user RLS ──────────────────────────────
+
+-- Add user_id column (DEFAULT auth.uid() so inserts auto-populate it)
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) DEFAULT auth.uid();
+
+-- Enable Row Level Security (if not already enabled)
+ALTER TABLE jobs ENABLE ROW LEVEL SECURITY;
+
+-- Drop any old permissive policies
+DROP POLICY IF EXISTS "Enable all for everyone" ON jobs;
+DROP POLICY IF EXISTS "Allow all" ON jobs;
+
+-- Each user sees and manages only their own jobs.
+-- The "OR user_id IS NULL" clause keeps any existing rows (pre-auth) visible
+-- to all users until you assign them. To assign existing rows to yourself,
+-- run: UPDATE jobs SET user_id = auth.uid() WHERE user_id IS NULL;
+CREATE POLICY "users_select_own" ON jobs
+  FOR SELECT USING (auth.uid() = user_id OR user_id IS NULL);
+
+CREATE POLICY "users_insert_own" ON jobs
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "users_update_own" ON jobs
+  FOR UPDATE USING (auth.uid() = user_id OR user_id IS NULL);
+
+CREATE POLICY "users_delete_own" ON jobs
+  FOR DELETE USING (auth.uid() = user_id OR user_id IS NULL);

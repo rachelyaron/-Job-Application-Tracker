@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Job, JobInsert, DEFAULT_STAGES, applyStageClick, getSupabase } from "@/lib/supabase";
+import { Job, JobInsert, DEFAULT_STAGES, applyStageClick, getSupabase, getSupabaseWithToken } from "@/lib/supabase";
 
 interface JobFormProps {
   job?: Job | null;
@@ -111,15 +111,18 @@ export default function JobForm({ job, onSave, onCancel }: JobFormProps) {
     try {
       let cv_url = form.cv_url || null;
 
+      const { data: { session } } = await getSupabase().auth.getSession();
+      const token = session?.access_token ?? "";
+
       if (cvFile) {
         const ext = cvFile.name.split(".").pop() ?? "pdf";
         const path = `${crypto.randomUUID()}.${ext}`;
-        const sb = getSupabase();
+        const sb = getSupabaseWithToken(token);
         const { error: uploadError } = await sb.storage
           .from("cvs")
           .upload(path, cvFile, { upsert: false });
         if (uploadError) throw new Error(`העלאת קו"ח נכשלה: ${uploadError.message}`);
-        const { data: urlData } = sb.storage.from("cvs").getPublicUrl(path);
+        const { data: urlData } = getSupabaseWithToken(token).storage.from("cvs").getPublicUrl(path);
         cv_url = urlData.publicUrl;
       }
 
@@ -127,7 +130,7 @@ export default function JobForm({ job, onSave, onCancel }: JobFormProps) {
       const method = job ? "PUT" : "POST";
       const res = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           ...form,
           field:    form.field    || null,

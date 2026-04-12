@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Job } from "@/lib/supabase";
+import { Job, getSupabase } from "@/lib/supabase";
 
 interface AiTipsProps {
   jobs: Job[];
@@ -19,9 +19,11 @@ export default function AiTips({ jobs }: AiTipsProps) {
     setTips("");
     setOpen(true);
     try {
+      const { data: { session } } = await getSupabase().auth.getSession();
+      const token = session?.access_token ?? "";
       const res = await fetch("/api/ai-tips", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ jobs }),
       });
       if (!res.ok) {

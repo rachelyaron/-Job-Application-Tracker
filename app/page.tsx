@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Job, JobStages, hasInterview, hasOffer, isJobActive, DEFAULT_STAGES } from "@/lib/supabase";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { Job, JobStages, hasInterview, hasOffer, isJobActive, DEFAULT_STAGES, getSupabase } from "@/lib/supabase";
 import StatsBar from "@/components/StatsBar";
 import JobTable from "@/components/JobTable";
 import JobForm from "@/components/JobForm";
 import AiTips from "@/components/AiTips";
+import AuthForm from "@/components/AuthForm";
 
 export default function Home() {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -14,23 +15,46 @@ export default function Home() {
   const [showForm, setShowForm] = useState(false);
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterField, setFilterField] = useState("all");
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  // Always-current token for use inside callbacks
+  const tokenRef = useRef<string | null>(null);
 
-  useEffect(() => {
-    fetchJobs();
-  }, []);
-
-  const fetchJobs = async () => {
+  const fetchJobs = useCallback(async () => {
+    if (!tokenRef.current) return;
     setLoading(true);
     try {
-      const res = await fetch("/api/jobs");
-      if (res.ok) {
-        const data = await res.json();
-        setJobs(data);
-      }
+      const res = await fetch("/api/jobs", {
+        headers: { Authorization: `Bearer ${tokenRef.current}` },
+      });
+      if (res.ok) setJobs(await res.json());
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const sb = getSupabase();
+
+    // Check existing session on mount
+    sb.auth.getSession().then(({ data }) => {
+      tokenRef.current = data.session?.access_token ?? null;
+      setUserEmail(data.session?.user?.email ?? null);
+      setAuthLoading(false);
+      if (data.session) fetchJobs();
+      else setLoading(false);
+    });
+
+    // Keep token and user state in sync with Supabase auth events
+    const { data: { subscription } } = sb.auth.onAuthStateChange((_, session) => {
+      tokenRef.current = session?.access_token ?? null;
+      setUserEmail(session?.user?.email ?? null);
+      if (session) fetchJobs();
+      else { setJobs([]); setLoading(false); }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [fetchJobs]);
 
   const handleSave = (saved: Job) => {
     setJobs((prev) => {
@@ -43,7 +67,10 @@ export default function Home() {
   };
 
   const handleDelete = async (id: string) => {
-    const res = await fetch(`/api/jobs/${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/jobs/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${tokenRef.current ?? ""}` },
+    });
     if (res.ok) setJobs((prev) => prev.filter((j) => j.id !== id));
   };
 
@@ -58,12 +85,23 @@ export default function Home() {
     );
     await fetch(`/api/jobs/${id}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${tokenRef.current ?? ""}`,
+      },
       body: JSON.stringify({ stages }),
     });
   };
 
+  const handleLogout = async () => {
+    await getSupabase().auth.signOut();
+  };
+
   const safe = (j: Job) => j.stages?.length ? j.stages : DEFAULT_STAGES;
+
+  const uniqueFields = Array.from(
+    new Set(jobs.map((j) => j.field).filter(Boolean) as string[])
+  ).sort();
 
   const statusFilters = [
     { value: "all",       label: "הכל",    count: jobs.length },
@@ -72,10 +110,6 @@ export default function Home() {
     { value: "offer",     label: "הצעה",   count: jobs.filter((j) => hasOffer(safe(j))).length },
     { value: "rejected",  label: "נדחיתי", count: jobs.filter((j) => !isJobActive(safe(j)) && !hasOffer(safe(j))).length },
   ];
-
-  const uniqueFields = Array.from(
-    new Set(jobs.map((j) => j.field).filter(Boolean) as string[])
-  ).sort();
 
   const filteredJobs = (() => {
     let list = jobs;
@@ -86,6 +120,18 @@ export default function Home() {
     if (filterField !== "all")        list = list.filter((j) => j.field === filterField);
     return list;
   })();
+
+  // Waiting for initial session check
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center" dir="rtl">
+        <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // Not logged in
+  if (!userEmail) return <AuthForm />;
 
   return (
     <main className="min-h-screen bg-slate-50" dir="rtl">
@@ -112,12 +158,23 @@ export default function Home() {
               <span>+</span>
               <span>הוסף מועמדות</span>
             </button>
+            {/* User info + logout */}
+            <div className="flex items-center gap-2 pr-2 mr-1 border-r border-slate-200">
+              <span className="text-xs text-slate-400 max-w-[140px] truncate hidden sm:block">
+                {userEmail}
+              </span>
+              <button
+                onClick={handleLogout}
+                className="text-sm text-slate-500 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
+              >
+                התנתק
+              </button>
+            </div>
           </div>
         </div>
       </header>
 
       <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
-        {/* Stats */}
         <StatsBar jobs={jobs} />
 
         {/* Filter bar */}

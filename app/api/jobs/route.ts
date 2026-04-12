@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseWithToken } from "@/lib/supabase";
 import { JobInsert } from "@/lib/supabase";
 
-export async function GET() {
+function getToken(req: NextRequest): string | null {
+  return req.headers.get("authorization")?.replace("Bearer ", "") ?? null;
+}
+
+export async function GET(req: NextRequest) {
   try {
-    const { data, error } = await supabase
+    const token = getToken(req);
+    if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const sb = getSupabaseWithToken(token);
+    const { data, error } = await sb
       .from("jobs")
       .select("*")
       .order("date_applied", { ascending: false });
@@ -20,8 +28,12 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const token = getToken(req);
+    if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
     const body: JobInsert = await req.json();
-    const { data, error } = await supabase
+    const sb = getSupabaseWithToken(token);
+    const { data, error } = await sb
       .from("jobs")
       .insert({ ...body, updated_at: new Date().toISOString() })
       .select()
