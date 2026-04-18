@@ -58,9 +58,14 @@
    Global resets
 ───────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; min-height: 100%; }
-body {
+html {
+  margin: 0; padding: 0; min-height: 100%;
+  /* gradient on html so it's always behind the sticky header */
   background: var(--bg-gradient);
+}
+body {
+  margin: 0; padding: 0; min-height: 100%;
+  background: transparent;
   color: var(--ink);
   font-family: var(--font);
   font-size: 14px;
@@ -152,10 +157,11 @@ textarea.input { height: auto; min-height: 90px; padding: 10px 14px; resize: ver
    Header
 ───────────────────────────────────────────── */
 .header {
-  background: rgba(255,255,255,0.72);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--hairline);
+  /* semi-transparent so the gradient behind bleeds through */
+  background: rgba(246, 248, 251, 0.55);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
   position: sticky;
   top: 0;
   z-index: 20;
@@ -258,10 +264,10 @@ textarea.input { height: auto; min-height: 90px; padding: 10px 14px; resize: ver
 }
 .stat-sub { font-size: 12px; color: var(--ink-3); margin-top: 6px; }
 
-.stat.tint-blue   { --_tint: var(--tint-blue);   --_tint-ink: var(--tint-blue-ink); }
-.stat.tint-purple { --_tint: var(--tint-purple); --_tint-ink: var(--tint-purple-ink); }
-.stat.tint-green  { --_tint: var(--tint-green);  --_tint-ink: var(--tint-green-ink); }
-.stat.tint-orange { --_tint: var(--tint-orange); --_tint-ink: var(--tint-orange-ink); }
+.stat.tint-blue   { --_tint: var(--tint-blue);   --_tint-ink: var(--tint-blue-ink);   background: var(--tint-blue);   border-color: #bfdbfe; }
+.stat.tint-purple { --_tint: var(--tint-purple); --_tint-ink: var(--tint-purple-ink); background: var(--tint-purple); border-color: #ddd6fe; }
+.stat.tint-green  { --_tint: var(--tint-green);  --_tint-ink: var(--tint-green-ink);  background: var(--tint-green);  border-color: #bbf7d0; }
+.stat.tint-orange { --_tint: var(--tint-orange); --_tint-ink: var(--tint-orange-ink); background: var(--tint-orange); border-color: #fed7aa; }
 
 /* Stale banner */
 .stale-banner {
