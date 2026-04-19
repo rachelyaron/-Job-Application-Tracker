@@ -629,6 +629,23 @@ tr:hover .row-actions { opacity: 1; }
   border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);
   width: 100%; max-width: 420px; padding: 36px;
 }
+/* Demo mode top banner */
+.demo-banner {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  color: white;
+  text-align: center;
+  padding: 8px 20px;
+  font-size: 13px; font-weight: 500;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+}
+.demo-banner-exit {
+  color: rgba(255,255,255,0.85);
+  font-size: 12.5px; font-weight: 500;
+  text-decoration: underline; text-underline-offset: 2px;
+  margin-inline-start: 6px;
+}
+.demo-banner-exit:hover { color: white; }
+
 /* Demo button */
 .demo-btn {
   width: 100%; margin: 20px 0 0;

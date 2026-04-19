@@ -3,15 +3,11 @@
 import { useState } from "react";
 import { getSupabase } from "@/lib/supabase";
 
-const DEMO_EMAIL    = "demo@example.com";
-const DEMO_PASSWORD = "demo1234";
-
 export default function AuthForm() {
   const [mode, setMode]         = useState<"login" | "signup">("login");
   const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading]   = useState(false);
-  const [demoLoading, setDemoLoading] = useState(false);
   const [error, setError]       = useState("");
   const [message, setMessage]   = useState("");
 
@@ -42,54 +38,8 @@ export default function AuthForm() {
     }
   };
 
-  const handleDemo = async () => {
-    setDemoLoading(true);
-    setError("");
-    setMessage("");
-    const sb = getSupabase();
-    try {
-      // Attempt login
-      let { error: signInErr } = await sb.auth.signInWithPassword({
-        email: DEMO_EMAIL,
-        password: DEMO_PASSWORD,
-      });
-
-      // If account doesn't exist yet, create it and retry
-      if (signInErr?.message.includes("Invalid login credentials")) {
-        const { error: signUpErr } = await sb.auth.signUp({
-          email: DEMO_EMAIL,
-          password: DEMO_PASSWORD,
-        });
-        if (signUpErr && !signUpErr.message.includes("already registered")) throw signUpErr;
-
-        const { error: retryErr } = await sb.auth.signInWithPassword({
-          email: DEMO_EMAIL,
-          password: DEMO_PASSWORD,
-        });
-        if (retryErr) throw retryErr;
-        signInErr = null;
-      } else if (signInErr) {
-        throw signInErr;
-      }
-
-      // Seed demo data (idempotent — skips if already seeded)
-      const { data: { session } } = await sb.auth.getSession();
-      if (session?.access_token) {
-        await fetch("/api/demo/seed", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        });
-      }
-      // Auth state change fires in page.tsx → fetchJobs() runs automatically
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "שגיאה לא ידועה";
-      if (msg.includes("Email not confirmed")) {
-        setError("יש לאשר את האימייל של חשבון הדמו. אנא פנה למנהל.");
-      } else {
-        setError(msg);
-      }
-      setDemoLoading(false);
-    }
+  const handleDemo = () => {
+    window.location.href = "/?demo=true";
   };
 
   return (
@@ -103,22 +53,12 @@ export default function AuthForm() {
         <button
           type="button"
           onClick={handleDemo}
-          disabled={demoLoading}
           className="demo-btn"
         >
-          {demoLoading ? (
-            <>
-              <span className="demo-spinner" />
-              טוען דמו…
-            </>
-          ) : (
-            <>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-                <path d="M5 3l14 9-14 9V3z" fill="currentColor"/>
-              </svg>
-              נסה את האפליקציה — כניסת דמו
-            </>
-          )}
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+            <path d="M5 3l14 9-14 9V3z" fill="currentColor"/>
+          </svg>
+          נסה את האפליקציה — כניסת דמו
         </button>
 
         <div className="auth-divider"><span>או התחבר עם חשבון</span></div>

@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Job, JobStages, hasInterview, hasOffer, isJobActive, DEFAULT_STAGES, getSupabase } from "@/lib/supabase";
 import { useSettings } from "@/contexts/SettingsContext";
+import { DEMO_JOBS } from "@/lib/demo-data";
 import StatsBar from "@/components/StatsBar";
 import JobTable from "@/components/JobTable";
 import CardsView from "@/components/CardsView";
@@ -24,8 +25,21 @@ export default function Home() {
   const [search, setSearch]         = useState("");
   const [userEmail, setUserEmail]   = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [isDemo, setIsDemo]         = useState(false);
   const tokenRef = useRef<string | null>(null);
 
+  // ── Demo mode detection ─────────────────────────────────────────────────
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.search.includes("demo=true")) {
+      setIsDemo(true);
+      setJobs(DEMO_JOBS);
+      setUserEmail("demo");
+      setAuthLoading(false);
+      setLoading(false);
+    }
+  }, []);
+
+  // ── Real auth ────────────────────────────────────────────────────────────
   const fetchJobs = useCallback(async () => {
     if (!tokenRef.current) return;
     setLoading(true);
@@ -40,6 +54,7 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    if (isDemo) return; // skip Supabase when in demo
     const sb = getSupabase();
     sb.auth.getSession().then(({ data }) => {
       tokenRef.current = data.session?.access_token ?? null;
@@ -55,8 +70,9 @@ export default function Home() {
       else { setJobs([]); setLoading(false); }
     });
     return () => subscription.unsubscribe();
-  }, [fetchJobs]);
+  }, [fetchJobs, isDemo]);
 
+  // ── Handlers ─────────────────────────────────────────────────────────────
   const handleSave = (saved: Job) => {
     setJobs((prev) => {
       const exists = prev.find((j) => j.id === saved.id);
@@ -68,6 +84,10 @@ export default function Home() {
   };
 
   const handleDelete = async (id: string) => {
+    if (isDemo) {
+      setJobs((prev) => prev.filter((j) => j.id !== id));
+      return;
+    }
     const res = await fetch(`/api/jobs/${id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${tokenRef.current ?? ""}` },
@@ -81,6 +101,7 @@ export default function Home() {
     setJobs((prev) =>
       prev.map((j) => (j.id === id ? { ...j, stages, updated_at: new Date().toISOString() } : j))
     );
+    if (isDemo) return; // local-only in demo
     await fetch(`/api/jobs/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${tokenRef.current ?? ""}` },
@@ -88,8 +109,12 @@ export default function Home() {
     });
   };
 
-  const handleLogout = () => getSupabase().auth.signOut();
+  const handleLogout = () => {
+    if (isDemo) { window.location.href = "/"; return; }
+    getSupabase().auth.signOut();
+  };
 
+  // ── Filtering ─────────────────────────────────────────────────────────────
   const safe = (j: Job) => j.stages?.length ? j.stages : DEFAULT_STAGES;
 
   const uniqueFields = Array.from(
@@ -120,7 +145,7 @@ export default function Home() {
     return list;
   })();
 
-  // Initial auth check spinner
+  // ── Render ────────────────────────────────────────────────────────────────
   if (authLoading) {
     return (
       <div style={{ minHeight: "100svh", display: "grid", placeItems: "center" }}>
@@ -137,10 +162,22 @@ export default function Home() {
 
   if (!userEmail) return <AuthForm />;
 
-  const avatarLetter = userEmail[0].toUpperCase();
+  const avatarLetter = isDemo ? "D" : userEmail[0].toUpperCase();
 
   return (
     <>
+      {/* Demo mode banner */}
+      {isDemo && (
+        <div className="demo-banner">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+            <path d="M5 3l14 9-14 9V3z" fill="currentColor"/>
+          </svg>
+          מצב הדגמה — השינויים אינם נשמרים
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+          <a href="/" className="demo-banner-exit">יציאה מהדמו ←</a>
+        </div>
+      )}
+
       <header className="header">
         <div className="header-inner">
           <div className="brand">
@@ -153,7 +190,7 @@ export default function Home() {
 
           <div style={{ flex: 1 }} />
 
-          <AiTips jobs={jobs} />
+          {!isDemo && <AiTips jobs={jobs} />}
 
           <button
             onClick={() => { setEditingJob(null); setShowForm(true); }}
@@ -168,7 +205,7 @@ export default function Home() {
           <div className="user-pill">
             <div className="avatar">{avatarLetter}</div>
             <span style={{ maxWidth: 140, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {userEmail}
+              {isDemo ? "Demo" : userEmail}
             </span>
             <button className="logout-btn" onClick={handleLogout}>{t.logout}</button>
           </div>
@@ -213,13 +250,6 @@ export default function Home() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-          </div>
-
-          <div className="view-switch">
-            <button className={view === "table"  ? "active" : ""} onClick={() => {}} title={t.tableView}
-              style={{ pointerEvents: "none", opacity: 0 }} aria-hidden>
-              {/* placeholder to avoid layout shift — real switching is via TweaksPanel */}
-            </button>
           </div>
         </div>
 
