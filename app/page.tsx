@@ -28,18 +28,7 @@ export default function Home() {
   const [isDemo, setIsDemo]         = useState(false);
   const tokenRef = useRef<string | null>(null);
 
-  // ── Demo mode detection ─────────────────────────────────────────────────
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.location.search.includes("demo=true")) {
-      setIsDemo(true);
-      setJobs(DEMO_JOBS);
-      setUserEmail("demo");
-      setAuthLoading(false);
-      setLoading(false);
-    }
-  }, []);
-
-  // ── Real auth ────────────────────────────────────────────────────────────
+  // ── Auth + demo: single effect so demo check short-circuits Supabase ────
   const fetchJobs = useCallback(async () => {
     if (!tokenRef.current) return;
     setLoading(true);
@@ -54,7 +43,17 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (isDemo) return; // skip Supabase when in demo
+    // Demo mode: skip Supabase entirely
+    if (window.location.search.includes("demo=true")) {
+      setIsDemo(true);
+      setJobs(DEMO_JOBS);
+      setUserEmail("demo");
+      setAuthLoading(false);
+      setLoading(false);
+      return;
+    }
+
+    // Real auth
     const sb = getSupabase();
     sb.auth.getSession().then(({ data }) => {
       tokenRef.current = data.session?.access_token ?? null;
@@ -70,7 +69,7 @@ export default function Home() {
       else { setJobs([]); setLoading(false); }
     });
     return () => subscription.unsubscribe();
-  }, [fetchJobs, isDemo]);
+  }, [fetchJobs]);
 
   // ── Handlers ─────────────────────────────────────────────────────────────
   const handleSave = (saved: Job) => {
