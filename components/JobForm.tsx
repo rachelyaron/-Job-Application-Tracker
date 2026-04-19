@@ -7,6 +7,7 @@ interface JobFormProps {
   job?: Job | null;
   onSave: (job: Job) => void;
   onCancel: () => void;
+  isDemo?: boolean;
 }
 
 function StageStateIcon({ state }: { state: string }) {
@@ -27,7 +28,7 @@ function StageStateIcon({ state }: { state: string }) {
   return null;
 }
 
-export default function JobForm({ job, onSave, onCancel }: JobFormProps) {
+export default function JobForm({ job, onSave, onCancel, isDemo = false }: JobFormProps) {
   const keyCounter = useRef(0);
   const nextKey = useCallback(() => String(++keyCounter.current), []);
   const makeKeys = (count: number) => Array.from({ length: count }, () => nextKey());
@@ -102,6 +103,30 @@ export default function JobForm({ job, onSave, onCancel }: JobFormProps) {
     setSaving(true);
     setError("");
     try {
+      const payload = {
+        ...form,
+        field:    form.field    || null,
+        job_link: form.job_link || null,
+        notes:    form.notes    || null,
+      };
+
+      // ── Demo mode: everything stays in memory ─────────────────────────
+      if (isDemo) {
+        const cv_url = cvFile ? `demo-cv://${cvFile.name}` : (form.cv_url || null);
+        const now = new Date().toISOString();
+        const saved: Job = {
+          ...payload,
+          cv_url,
+          id:         job?.id ?? `demo-${crypto.randomUUID()}`,
+          user_id:    "demo",
+          created_at: job?.created_at ?? now,
+          updated_at: now,
+        };
+        onSave(saved);
+        return;
+      }
+
+      // ── Real mode: upload CV then call API ────────────────────────────
       const { data: { session } } = await getSupabase().auth.getSession();
       const token = session?.access_token ?? "";
 
@@ -121,13 +146,7 @@ export default function JobForm({ job, onSave, onCancel }: JobFormProps) {
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          ...form,
-          field:    form.field    || null,
-          job_link: form.job_link || null,
-          cv_url,
-          notes:    form.notes    || null,
-        }),
+        body: JSON.stringify({ ...payload, cv_url }),
       });
       if (!res.ok) {
         const data = await res.json();

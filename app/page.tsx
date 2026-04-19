@@ -296,6 +296,7 @@ export default function Home() {
           job={editingJob}
           onSave={handleSave}
           onCancel={() => { setShowForm(false); setEditingJob(null); }}
+          isDemo={isDemo}
         />
       )}
 
