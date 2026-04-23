@@ -25,7 +25,7 @@ No sign-up needed - click the demo button to explore with pre-loaded sample data
 
 | Add application button | New application form |
 |---|---|
-| ![Add application](public/add.png) | ![New application form](public/new application .png) |
+| ![Add application](public/add.png) | ![New application form](public/new_application.png) |
 
 | Stale application alert | |
 |---|---|
