@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Job, JobStages, DEFAULT_STAGES } from "@/lib/supabase";
 import Timeline from "@/components/Timeline";
 import { logoStyle, logoInitials, getKanbanColumn } from "@/lib/utils";
@@ -14,7 +15,18 @@ interface KanbanViewProps {
 }
 
 export default function KanbanView({ jobs, onEdit, onTimelineChange, t, lang }: KanbanViewProps) {
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
   const safe = (j: Job): JobStages => j.stages?.length ? j.stages : DEFAULT_STAGES.map(s => ({ ...s }));
+
+  const toggleExpand = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpanded(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
 
   const cols = [
     { id: "applied",  title: t.colApplied,  color: "#64748b" },
@@ -41,7 +53,12 @@ export default function KanbanView({ jobs, onEdit, onTimelineChange, t, lang }: 
           </div>
           <div className="kcol-body">
             {byCol[col.id].map(job => {
-              const stages = safe(job);
+              const stages     = safe(job);
+              const isExpanded = expanded.has(job.id);
+              const overflow   = stages.length > 3;
+              const hidden     = overflow && !isExpanded ? stages.length - 3 : 0;
+              const visible    = overflow && !isExpanded ? stages.slice(0, 3) : stages;
+
               return (
                 <div key={job.id} className="kcard" onClick={() => onEdit(job)}>
                   <div className="kcard-head">
@@ -59,11 +76,43 @@ export default function KanbanView({ jobs, onEdit, onTimelineChange, t, lang }: 
 
                   <div onClick={(e) => e.stopPropagation()}>
                     <Timeline
-                      stages={stages}
-                      onChange={(updated) => onTimelineChange(job.id, updated)}
+                      stages={visible}
+                      onChange={(updated) => {
+                        // when collapsed, merge updated visible stages back with hidden tail
+                        const full = (overflow && !isExpanded)
+                          ? [...updated, ...stages.slice(3)]
+                          : updated;
+                        onTimelineChange(job.id, full);
+                      }}
                       compact
                       lang={lang}
                     />
+
+                    {overflow && (
+                      <button
+                        type="button"
+                        className="kcard-more-btn"
+                        onClick={(e) => toggleExpand(job.id, e)}
+                      >
+                        {isExpanded ? (
+                          <span className="kcard-more-label">
+                            <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
+                              <path d="M3 10L8 5L13 10" stroke="currentColor" strokeWidth="2"
+                                strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                            {lang === "he" ? "פחות" : "Less"}
+                          </span>
+                        ) : (
+                          <span className="kcard-more-label">
+                            <span className="kcard-more-count">+{hidden}</span>
+                            <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
+                              <path d="M3 6L8 11L13 6" stroke="currentColor" strokeWidth="2"
+                                strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          </span>
+                        )}
+                      </button>
+                    )}
                   </div>
 
                   <div className="kcard-meta">
