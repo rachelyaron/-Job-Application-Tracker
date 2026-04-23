@@ -23,6 +23,14 @@ No sign-up needed - click the demo button to explore with pre-loaded sample data
 |---|---|
 | ![Dark mode](public/dark.png) | ![Settings](public/tweaks.png) |
 
+| Add application button | New application form |
+|---|---|
+| ![Add application](public/add.png) | ![New application form](public/new application .png) |
+
+| Stale application alert | |
+|---|---|
+| ![Stale alert](public/alart.png) | |
+
 ---
 
 ## The Problem
